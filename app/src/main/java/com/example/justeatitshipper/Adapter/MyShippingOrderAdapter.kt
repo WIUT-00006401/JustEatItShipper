@@ -13,7 +13,10 @@ import com.bumptech.glide.Glide
 import com.example.justeatitshipper.Common.Common
 import com.example.justeatitshipper.Model.ShippingOrderModel
 import com.example.justeatitshipper.R
+import com.example.justeatitshipper.ShippingActivity
 import com.google.android.material.button.MaterialButton
+import com.google.gson.Gson
+import io.paperdb.Paper
 import java.lang.StringBuilder
 import java.text.SimpleDateFormat
 
@@ -24,7 +27,7 @@ class MyShippingOrderAdapter(var context: Context,
 
     init {
         simpleDateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm:ss")
-        //Paper.init(context)
+        Paper.init(context)
     }
 
     inner class MyViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
@@ -78,8 +81,8 @@ class MyShippingOrderAdapter(var context: Context,
         }
 
         holder.btn_ship_now.setOnClickListener{
-            //Paper.book().write(Common.SHIPPING_DATA, Gson().toJson(shippingOrderModelList[0]))
-            //context.startActivity(Intent(context,ShippingActivity::class.java))
+            Paper.book().write(Common.SHIPPING_DATA, Gson().toJson(shippingOrderModelList[0]))
+            context.startActivity(Intent(context, ShippingActivity::class.java))
         }
 
     }
