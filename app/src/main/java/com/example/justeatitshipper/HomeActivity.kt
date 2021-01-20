@@ -1,6 +1,8 @@
 package com.example.justeatitshipper
 
+import android.content.Intent
 import android.os.Bundle
+import android.text.TextUtils
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import androidx.navigation.findNavController
@@ -13,6 +15,9 @@ import com.google.android.material.navigation.NavigationView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import android.view.Menu
+import android.widget.Toast
+import com.example.justeatitshipper.Common.Common
+import com.google.firebase.iid.FirebaseInstanceId
 
 class HomeActivity : AppCompatActivity() {
 
@@ -23,6 +28,9 @@ class HomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home)
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
+
+        updateToken()
+        //checkStartTrip()
 
         val drawerLayout: DrawerLayout = findViewById(R.id.drawer_layout)
         val navView: NavigationView = findViewById(R.id.nav_view)
@@ -37,6 +45,29 @@ class HomeActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        //checkStartTrip()
+    }
+
+    //Checked true 56
+    /*private fun checkStartTrip() {
+        Paper.init(this)
+        val data = Paper.book().read<String>(Common.TRIP_START)
+        if (!TextUtils.isEmpty(data))
+            startActivity(Intent(this,ShippingActivity::class.java))
+
+    }*/
+
+    private fun updateToken() {
+        FirebaseInstanceId.getInstance()
+            .instanceId
+            .addOnFailureListener{e-> Toast.makeText(this@HomeActivity,""+e.message, Toast.LENGTH_SHORT).show()}
+            .addOnSuccessListener { instanceIdResult ->
+                Common.updateToken(this@HomeActivity,instanceIdResult.token,false,true)
+            }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
