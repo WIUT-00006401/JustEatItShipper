@@ -133,7 +133,7 @@ object Common {
     }
 
     //Checked true
-    /*fun decodePoly(encoded: String): List<LatLng> {
+    fun decodePoly(encoded: String): List<LatLng> {
         val poly:MutableList<LatLng> = ArrayList<LatLng>()
         var index = 0
         var len = encoded.length
@@ -164,6 +164,6 @@ object Common {
             poly.add(p)
         }
         return poly
-    }*/
+    }
 
 }
