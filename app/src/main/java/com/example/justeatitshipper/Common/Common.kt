@@ -20,6 +20,7 @@ import androidx.core.app.NotificationCompat
 import com.example.justeatitshipper.Model.ShipperUserModel
 import com.example.justeatitshipper.Model.TokenModel
 import com.example.justeatitshipper.R
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.database.FirebaseDatabase
 import java.lang.StringBuilder
 
@@ -117,7 +118,7 @@ object Common {
         return StringBuilder("/topics/new_order").toString()
     }
     //checked true
-    /*fun getBearing(begin: LatLng, end: LatLng): Float {
+    fun getBearing(begin: LatLng, end: LatLng): Float {
         val lat = Math.abs(begin.latitude - end.longitude)
         val lng = Math.abs(begin.longitude - end.longitude)
         if (begin.latitude < end.latitude && begin.longitude < end.longitude)
@@ -129,7 +130,7 @@ object Common {
         else if (begin.latitude<end.latitude&&begin.longitude >= end.longitude)
             return (90-Math.toDegrees(Math.atan(lng/lat))+270).toFloat()
         return -1.0f
-    }*/
+    }
 
     //Checked true
     /*fun decodePoly(encoded: String): List<LatLng> {
