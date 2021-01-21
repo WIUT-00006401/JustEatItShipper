@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
 import dmax.dialog.SpotsDialog
+import io.paperdb.Paper
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -47,9 +48,9 @@ class MainActivity : AppCompatActivity() {
         init()
 
         //Delete data
-        /*Paper.init(this)
+        Paper.init(this)
         Paper.book().delete(Common.TRIP_START)
-        Paper.book().delete(Common.SHIPPING_DATA)*/
+        Paper.book().delete(Common.SHIPPING_DATA)
     }
 
     private fun init() {

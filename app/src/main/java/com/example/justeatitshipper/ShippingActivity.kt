@@ -109,7 +109,7 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
         buildLocationRequest()
         buildLocationCallback()
 
-        setShippingOrderModel()
+
 
 
 
@@ -152,11 +152,9 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             .findFragmentById(R.id.places_autocomplete_fragment) as AutocompleteSupportFragment
         places_fragment.setPlaceFields(placeFields)
         places_fragment.setOnPlaceSelectedListener(object: PlaceSelectionListener {
-            override fun onPlaceSelected(p0: Place) {
-                //drawRoutes(place)
-                Toast.makeText(this@ShippingActivity,StringBuilder(p0.name!!)
-                    .append("-")
-                    .append(p0.latLng).toString(),Toast.LENGTH_SHORT).show()
+            override fun onPlaceSelected(place: Place) {
+                drawRoutes(place)
+
             }
 
             override fun onError(p0: Status) {
@@ -179,16 +177,16 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             btn_start_trip.isEnabled = false//Deactive after click
 
             //Show directions from shipper to order's location after start trip
-            //drawRoutes(data)
+            drawRoutes(data)
         }
 
-        /*btn_show.setOnClickListener{
+        btn_show.setOnClickListener{
             if (expandable_layout.isExpanded)
                 btn_show.text = "SHOW"
             else
                 btn_show.text = "HIDE"
             expandable_layout.toggle()
-        }*/
+        }
     }
 
     private fun setShippingOrderModel() {
@@ -209,7 +207,7 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
         if (!TextUtils.isEmpty(data))
         {
 
-            //drawRoutes(data)
+            drawRoutes(data)
 
             shippingOrderModel = Gson()
                 .fromJson<ShippingOrderModel>(data,object: TypeToken<ShippingOrderModel>(){}.type)
@@ -246,6 +244,131 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             Toast.makeText(this,"Shipping order model is null", Toast.LENGTH_SHORT).show()
         }
     }
+
+    //checked true 59
+    private fun drawRoutes(place:Place) {
+
+
+        mMap.addMarker(MarkerOptions()
+            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))
+            .title(place.name)
+            .snippet(place.address)
+            .position(place.latLng!!))
+
+        fusedLocationProviderClient.lastLocation
+            .addOnFailureListener{e->Toast.makeText(this@ShippingActivity,""+e.message,
+                Toast.LENGTH_SHORT).show()}
+            .addOnSuccessListener { location ->
+                val to = StringBuilder().append(place.latLng!!.latitude)
+                    .append(",")
+                    .append(place.latLng!!.latitude).toString()
+                val from = StringBuilder().append(location.latitude)
+                    .append(",")
+                    .append(location.longitude).toString()
+
+                compositeDisposable.add(iGoogleApi!!.getDirections("driving", "less_driving",
+                    from, to,
+                    //getString(com.google.android.gms.location.R.string.google_maps_key))!!
+                    getString(R.string.google_maps_key))!!
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ s->
+                        try {
+                            val jsonObject = JSONObject(s)
+                            val jsonArray = jsonObject.getJSONArray("routes")
+                            for (i in 0 until jsonArray.length())
+                            {
+                                val route  = jsonArray.getJSONObject(i)
+                                val poly = route.getJSONObject("overview_polyline")
+                                val polyline = poly.getString("points")
+                                polylineList = Common.decodePoly(polyline)
+                            }
+
+                            polylineOptions = PolylineOptions()
+                            polylineOptions!!.color(Color.YELLOW)
+                            polylineOptions!!.width(12.0f)
+                            polylineOptions!!.startCap(SquareCap())
+                            polylineOptions!!.endCap(SquareCap())
+                            polylineOptions!!.jointType(JointType.ROUND)
+                            polylineOptions!!.addAll(polylineList)
+                            yellowPolyline = mMap.addPolyline(polylineOptions)
+
+
+                        }catch (e:Exception)
+                        {
+                            Log.d("DEBUG",e.message)
+                        }
+                    }, {throwable ->
+                        Toast.makeText(this@ShippingActivity,""+throwable.message,Toast.LENGTH_SHORT).show()
+                    }))
+            }
+    }
+
+
+
+    //checked true whole function correct 58
+    private fun drawRoutes(data: String?) {
+
+
+        val shippingOrderModel = Gson()
+            .fromJson<ShippingOrderModel>(data,object:TypeToken<ShippingOrderModel>(){}.type)
+
+        mMap.addMarker(MarkerOptions()
+            //.icon(BitmapDescriptorFactory.fromResource(com.google.android.gms.location.R.drawable.box))
+            .icon(BitmapDescriptorFactory.fromResource(R.drawable.box))
+            .title(shippingOrderModel.orderModel!!.userName)
+            .snippet(shippingOrderModel.orderModel!!.shippingAddress)
+            .position(LatLng(shippingOrderModel.orderModel!!.lat, shippingOrderModel.orderModel!!.lng)))
+
+        fusedLocationProviderClient.lastLocation
+            .addOnFailureListener{e->Toast.makeText(this@ShippingActivity,""+e.message,
+                Toast.LENGTH_SHORT).show()}
+            .addOnSuccessListener { location ->
+                val to = StringBuilder().append(shippingOrderModel.orderModel!!.lat)
+                    .append(",")
+                    .append(shippingOrderModel.orderModel!!.lng).toString()
+                val from = StringBuilder().append(location.latitude)
+                    .append(",")
+                    .append(location.longitude).toString()
+
+                compositeDisposable.add(iGoogleApi!!.getDirections("driving", "less_driving",
+                    from, to,
+                    //getString(com.google.android.gms.location.R.string.google_maps_key))!!
+                    getString(R.string.google_maps_key))!!
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ s->
+                        try {
+                            val jsonObject = JSONObject(s)
+                            val jsonArray = jsonObject.getJSONArray("routes")
+                            for (i in 0 until jsonArray.length())
+                            {
+                                val route  = jsonArray.getJSONObject(i)
+                                val poly = route.getJSONObject("overview_polyline")
+                                val polyline = poly.getString("points")
+                                polylineList = Common.decodePoly(polyline)
+                            }
+
+                            polylineOptions = PolylineOptions()
+                            polylineOptions!!.color(Color.RED)
+                            polylineOptions!!.width(12.0f)
+                            polylineOptions!!.startCap(SquareCap())
+                            polylineOptions!!.endCap(SquareCap())
+                            polylineOptions!!.jointType(JointType.ROUND)
+                            polylineOptions!!.addAll(polylineList)
+                            redPolyline = mMap.addPolyline(polylineOptions)
+
+
+                        }catch (e:Exception)
+                        {
+                            Log.d("DEBUG",e.message)
+                        }
+                    }, {throwable ->
+                        Toast.makeText(this@ShippingActivity,""+throwable.message,Toast.LENGTH_SHORT).show()
+                    }))
+            }
+    }
+
 
     private fun buildLocationCallback() {
 
@@ -436,6 +559,8 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+
+        setShippingOrderModel()
 
         mMap!!.uiSettings.isZoomControlsEnabled = true
         try {
