@@ -18,6 +18,7 @@ import android.view.Menu
 import android.widget.Toast
 import com.example.justeatitshipper.Common.Common
 import com.google.firebase.iid.FirebaseInstanceId
+import io.paperdb.Paper
 
 class HomeActivity : AppCompatActivity() {
 
@@ -49,17 +50,17 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        //checkStartTrip()
+        checkStartTrip()
     }
 
     //Checked true 56
-    /*private fun checkStartTrip() {
+    private fun checkStartTrip() {
         Paper.init(this)
         val data = Paper.book().read<String>(Common.TRIP_START)
         if (!TextUtils.isEmpty(data))
             startActivity(Intent(this,ShippingActivity::class.java))
 
-    }*/
+    }
 
     private fun updateToken() {
         FirebaseInstanceId.getInstance()

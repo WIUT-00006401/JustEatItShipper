@@ -22,6 +22,7 @@ import com.example.justeatitshipper.Common.MarkerAnimation
 import com.example.justeatitshipper.Model.ShippingOrderModel
 import com.example.justeatitshipper.Remote.IGoogleApi
 import com.example.justeatitshipper.Remote.RetrofitClient
+import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
 
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -29,6 +30,11 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.karumi.dexter.Dexter
@@ -45,6 +51,8 @@ import kotlinx.android.synthetic.main.activity_shipping.*
 import org.json.JSONObject
 import java.lang.StringBuilder
 import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -80,11 +88,23 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
     private var iGoogleApi: IGoogleApi?=null
     private var compositeDisposable = CompositeDisposable()
 
+    private lateinit var places_fragment: AutocompleteSupportFragment
+    private lateinit var placesClient: PlacesClient
+    private val placeFields = Arrays.asList(
+        Place.Field.ID,
+        Place.Field.NAME,
+        Place.Field.ADDRESS,
+        Place.Field.LAT_LNG)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_shipping)
 
         iGoogleApi = RetrofitClient.instance!!.create(IGoogleApi::class.java)
+
+        initPlaces()
+
+        setupPlaceAutocomplete()
 
         buildLocationRequest()
         buildLocationCallback()
@@ -122,18 +142,59 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
 
             }).check()
 
-
+        initViews()
     }
 
+    private fun setupPlaceAutocomplete() {
+
+        places_fragment = supportFragmentManager
+            //.findFragmentById(com.google.android.gms.location.R.id.places_autocomplete_fragment) as AutocompleteSupportFragment
+            .findFragmentById(R.id.places_autocomplete_fragment) as AutocompleteSupportFragment
+        places_fragment.setPlaceFields(placeFields)
+        places_fragment.setOnPlaceSelectedListener(object: PlaceSelectionListener {
+            override fun onPlaceSelected(p0: Place) {
+                //drawRoutes(place)
+                Toast.makeText(this@ShippingActivity,StringBuilder(p0.name!!)
+                    .append("-")
+                    .append(p0.latLng).toString(),Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onError(p0: Status) {
+                Toast.makeText(this@ShippingActivity,""+p0.statusMessage,Toast.LENGTH_SHORT).show()
+            }
+
+        })
+    }
+
+    private fun initPlaces() {
+        //Places.initialize(this,getString(com.google.android.gms.location.R.string.google_maps_key))
+        Places.initialize(this,getString(R.string.google_maps_key))
+        placesClient = Places.createClient(this)
+    }
+
+    private fun initViews() {
+        btn_start_trip.setOnClickListener{
+            val data = Paper.book().read<String>(Common.SHIPPING_DATA)
+            Paper.book().write(Common.TRIP_START,data)
+            btn_start_trip.isEnabled = false//Deactive after click
+
+            //Show directions from shipper to order's location after start trip
+            //drawRoutes(data)
+        }
+
+        /*btn_show.setOnClickListener{
+            if (expandable_layout.isExpanded)
+                btn_show.text = "SHOW"
+            else
+                btn_show.text = "HIDE"
+            expandable_layout.toggle()
+        }*/
+    }
 
     private fun setShippingOrderModel() {
         Paper.init(this)
 
-        //to be clear later
-        val data = Paper.book().read<String>(Common.SHIPPING_DATA)
-
-
-        /*var data:String?=""
+        var data:String?=""
         if (TextUtils.isEmpty(Paper.book().read(Common.TRIP_START)))
         {
             data = Paper.book().read<String>(Common.SHIPPING_DATA)
@@ -143,7 +204,7 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
         {
             data = Paper.book().read<String>(Common.TRIP_START)
             btn_start_trip.isEnabled = false
-        }*/
+        }
 //till here
         if (!TextUtils.isEmpty(data))
         {
