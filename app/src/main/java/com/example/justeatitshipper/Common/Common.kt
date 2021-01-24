@@ -74,11 +74,13 @@ object Common {
 
 
     fun updateToken(context: Context, token: String, isServerToken:Boolean, isShipperToken:Boolean) {
-        FirebaseDatabase.getInstance()
-            .getReference(TOKEN_REF)
-            .child(Common.currentShipperUser!!.uid!!)
-            .setValue(TokenModel(Common.currentShipperUser!!.phone!!,token,isServerToken,isShipperToken))
-            .addOnFailureListener{e-> Toast.makeText(context, ""+e.message, Toast.LENGTH_SHORT).show()}
+        //Fix crush on first time run
+        if (Common.currentShipperUser != null)
+            FirebaseDatabase.getInstance()
+                .getReference(TOKEN_REF)
+                .child(Common.currentShipperUser!!.uid!!)
+                .setValue(TokenModel(Common.currentShipperUser!!.phone!!,token,isServerToken,isShipperToken))
+                .addOnFailureListener{e-> Toast.makeText(context, ""+e.message, Toast.LENGTH_SHORT).show()}
     }
 
     fun showNotification(context: Context, id: Int, title: String?, content: String?, intent: Intent?) {

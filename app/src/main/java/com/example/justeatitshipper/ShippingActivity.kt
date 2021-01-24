@@ -35,6 +35,7 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
+import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.karumi.dexter.Dexter
@@ -53,6 +54,7 @@ import java.lang.StringBuilder
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -175,6 +177,24 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             val data = Paper.book().read<String>(Common.SHIPPING_DATA)
             Paper.book().write(Common.TRIP_START,data)
             btn_start_trip.isEnabled = false//Deactive after click
+
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener { location->
+                val update_data = HashMap<String,Any>()
+                update_data.put("currentLat",location.latitude)
+                update_data.put("currentLng", location.longitude)
+
+                FirebaseDatabase.getInstance()
+                    .getReference(Common.SHIPPING_ORDER_REF)
+                    .child(shippingOrderModel!!.key!!)
+                    .updateChildren(update_data)
+                    .addOnFailureListener{e->
+                        Toast.makeText(this,e.message,Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnSuccessListener { aVoid->
+                        //Show directions from shipper to order's location after start trip
+                        drawRoutes(data)
+                    }
+            }
 
             //Show directions from shipper to order's location after start trip
             drawRoutes(data)
@@ -514,7 +534,7 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
                                 marker!!.setAnchor(0.5f,0.5f)
                                 marker!!.rotation = Common.getBearing(startPosition!!,newPos)
 
-                                mMap.animateCamera(CameraUpdateFactory.newLatLng(marker.position))
+                                mMap.moveCamera(CameraUpdateFactory.newLatLng(marker.position)) //Fixed
                             }
 
                             valueAnimator.start()
