@@ -1,10 +1,13 @@
 package com.example.justeatitshipper
 
 import android.animation.ValueAnimator
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.location.Location
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
@@ -13,6 +16,7 @@ import android.text.TextUtils
 import android.util.Log
 import android.view.animation.LinearInterpolator
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import com.bumptech.glide.Glide
@@ -51,8 +55,10 @@ import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_shipping.*
 import org.json.JSONObject
 import java.lang.StringBuilder
+import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.jar.Manifest
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -178,22 +184,53 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             Paper.book().write(Common.TRIP_START,data)
             btn_start_trip.isEnabled = false//Deactive after click
 
-            fusedLocationProviderClient.lastLocation.addOnSuccessListener { location->
-                val update_data = HashMap<String,Any>()
-                update_data.put("currentLat",location.latitude)
-                update_data.put("currentLng", location.longitude)
+            shippingOrderModel = Gson().fromJson(data,object :TypeToken<ShippingOrderModel?>(){}.type)
 
-                FirebaseDatabase.getInstance()
-                    .getReference(Common.SHIPPING_ORDER_REF)
-                    .child(shippingOrderModel!!.key!!)
-                    .updateChildren(update_data)
-                    .addOnFailureListener{e->
-                        Toast.makeText(this,e.message,Toast.LENGTH_SHORT).show()
-                    }
-                    .addOnSuccessListener { aVoid->
-                        //Show directions from shipper to order's location after start trip
-                        drawRoutes(data)
-                    }
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener { location->
+
+                compositeDisposable.add(iGoogleApi!!.getDirections("driving", "less_driving",
+                Common.buildLocationString(location),
+                StringBuilder().append(shippingOrderModel!!.orderModel!!.lat)
+                    .append(",")
+                    .append(shippingOrderModel!!.orderModel!!.lng).toString(),
+                getString(R.string.google_maps_key))!!
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({s->
+
+                        //Get Estimate time from API
+                        var estimateTime = "UNKNOWN"
+                        val jsonObject = JSONObject(s)
+                        val routes = jsonObject.getJSONArray("routes")
+                        val `object` = routes.getJSONObject(0)
+                        val legs = `object`.getJSONArray("legs")
+                        val legsObject = legs.getJSONObject(0)
+
+                        //Time
+                        val time = legsObject.getJSONObject("duration")
+                        estimateTime = time.getString("text")
+
+                        val update_data = HashMap<String,Any>()
+                        update_data.put("currentLat",location.latitude)
+                        update_data.put("currentLng", location.longitude)
+                        update_data.put("estimateTime",estimateTime)
+
+                        FirebaseDatabase.getInstance()
+                            .getReference(Common.SHIPPING_ORDER_REF)
+                            .child(shippingOrderModel!!.key!!)
+                            .updateChildren(update_data)
+                            .addOnFailureListener{e->
+                                Toast.makeText(this,e.message,Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnSuccessListener { aVoid->
+                                //Show directions from shipper to order's location after start trip
+                                drawRoutes(data)
+                            }
+
+                    }, {t:Throwable? ->
+                        Toast.makeText(this@ShippingActivity,t!!.message,Toast.LENGTH_SHORT).show()
+                    }))
+
             }
 
             //Show directions from shipper to order's location after start trip
@@ -206,6 +243,44 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
             else
                 btn_show.text = "HIDE"
             expandable_layout.toggle()
+        }
+
+        btn_call.setOnClickListener{
+            if (shippingOrderModel != null)
+            {
+                if (ActivityCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.CALL_PHONE
+                    ) != PackageManager.PERMISSION_GRANTED)
+                {
+                    Dexter.withActivity(this)
+                        .withPermission(android.Manifest.permission.CALL_PHONE)
+                        .withListener(object :PermissionListener{
+                            override fun onPermissionGranted(response: PermissionGrantedResponse?) {
+
+                            }
+
+                            override fun onPermissionRationaleShouldBeShown(
+                                permission: PermissionRequest?,
+                                token: PermissionToken?
+                            ) {
+
+                            }
+
+                            override fun onPermissionDenied(response: PermissionDeniedResponse?) {
+                                Toast.makeText(this@ShippingActivity, "You must enable this permission to CALL", Toast.LENGTH_SHORT).show()
+                            }
+
+                        }).check()
+
+                    return@setOnClickListener
+                }
+
+                val intent = Intent(Intent.ACTION_CALL)
+                intent.data = (Uri.parse(StringBuilder("tel:").append(shippingOrderModel!!.orderModel!!.userPhone!!).toString()))
+
+                startActivity(intent)
+            }
         }
     }
 
@@ -398,7 +473,7 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
                 val locationShipper = LatLng(p0!!.lastLocation.latitude,
                     p0!!.lastLocation.longitude)
 
-                //updateLocation(p0.lastLocation)
+                updateLocation(p0.lastLocation)
 
                 //Checked true 55-video
                 if (shipperMarker==null)
@@ -445,6 +520,60 @@ class ShippingActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
                 //till here
             }
+        }
+    }
+
+    private fun updateLocation(lastLocation:Location?){
+        val data = Paper.book().read<String>(Common.TRIP_START)
+        if (!TextUtils.isEmpty(data))
+        {
+            val shippingOrder = Gson().fromJson<ShippingOrderModel>(data,object :TypeToken<ShippingOrderModel>(){}.type)
+            if (shippingOrder != null)
+            {
+                compositeDisposable.add(iGoogleApi!!.getDirections("driving", "less_driving",
+                    Common.buildLocationString(lastLocation),
+                    StringBuilder().append(shippingOrderModel!!.orderModel!!.lat)
+                        .append(",")
+                        .append(shippingOrderModel!!.orderModel!!.lng).toString(),
+                    getString(R.string.google_maps_key))!!
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({s->
+
+                        //Get Estimate time from API
+                        var estimateTime = "UNKNOWN"
+                        val jsonObject = JSONObject(s)
+                        val routes = jsonObject.getJSONArray("routes")
+                        val `object` = routes.getJSONObject(0)
+                        val legs = `object`.getJSONArray("legs")
+                        val legsObject = legs.getJSONObject(0)
+
+                        //Time
+                        val time = legsObject.getJSONObject("duration")
+                        estimateTime = time.getString("text")
+
+                        val update_data = HashMap<String,Any>()
+                        update_data.put("currentLat",lastLocation!!.latitude)
+                        update_data.put("currentLng", lastLocation!!.longitude)
+                        update_data.put("estimateTime",estimateTime)
+
+                        FirebaseDatabase.getInstance()
+                            .getReference(Common.SHIPPING_ORDER_REF)
+                            .child(shippingOrderModel!!.key!!)
+                            .updateChildren(update_data)
+                            .addOnFailureListener{e->
+                                Toast.makeText(this,e.message,Toast.LENGTH_SHORT).show()
+                            }
+
+
+                    }, {t:Throwable? ->
+                        Toast.makeText(this@ShippingActivity,t!!.message,Toast.LENGTH_SHORT).show()
+                    }))
+            }
+        }
+        else
+        {
+            Toast.makeText(this, "Please press START_TRIP", Toast.LENGTH_SHORT).show()
         }
     }
 
