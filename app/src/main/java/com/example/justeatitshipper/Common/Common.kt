@@ -18,6 +18,7 @@ import android.text.style.StyleSpan
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import com.example.justeatitshipper.Model.RestaurantModel
 import com.example.justeatitshipper.Model.ShipperUserModel
 import com.example.justeatitshipper.Model.TokenModel
 import com.example.justeatitshipper.R
@@ -26,6 +27,9 @@ import com.google.firebase.database.FirebaseDatabase
 import java.lang.StringBuilder
 
 object Common {
+    val RESTAURANT_SAVE: String="RESTAURANT_SAVE"
+    var currentRestaurant: RestaurantModel?=null
+    val RESTAURANT_REF: String="Restaurant"
     val TRIP_START: String?= "Trip"
     val SHIPPING_DATA: String? = "ShippingData"
     val SHIPPING_ORDER_REF: String = "ShippingOrder"
